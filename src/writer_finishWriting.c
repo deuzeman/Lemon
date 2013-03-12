@@ -42,6 +42,7 @@ int lemonFinishWriting(LemonWriter *writer)
   else if (writer->my_rank == 0)
     MPI_Wait(&writer->request, &status);
 
+
   writer->pos += writer->bytes_wanted;
   MPI_File_set_view(*writer->fp, writer->off, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL);
   MPI_File_seek(*writer->fp, writer->pos, MPI_SEEK_SET);
@@ -59,6 +60,7 @@ int lemonFinishWriting(LemonWriter *writer)
       return LEMON_ERR_WRITE;
     }
   }
+
   else
   {
     MPI_Bcast(&written, 1, MPI_INT, 0, writer->cartesian);
