@@ -146,10 +146,10 @@ int main(int argc, char **argv)
       for (int y = loc_dims[2] * mpi_coords[2]; y < loc_dims[2] * (mpi_coords[2] + 1); ++y)
         for (int x = loc_dims[3] * mpi_coords[3]; x < loc_dims[3] * (mpi_coords[3] + 1); ++x)
         {
-          failure += (data[ctr][0] == t);
-          failure += (data[ctr][1] == z);
-          failure += (data[ctr][2] == y);
-          failure += (data[ctr][3] == x);
+          failure += (data[ctr][0] != t);
+          failure += (data[ctr][1] != z);
+          failure += (data[ctr][2] != y);
+          failure += (data[ctr][3] != x);
           ++ctr;
         }
   
