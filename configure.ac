@@ -1,11 +1,11 @@
 AC_PREREQ(2.53)
-AC_INIT([Lemon], [0.99], [a.deuzeman@rug.nl], [lemon])
+AC_INIT([Lemon], m4_esyscmd([./version-gen | tr -d '\n']), [deuzeman@itp.unibe.ch])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([src/header_construct.c])
 AC_CONFIG_HEADERS([include/config.h])
 
 # Checks for programs.
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_CC
 AC_PROG_RANLIB
 

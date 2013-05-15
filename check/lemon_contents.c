@@ -1,13 +1,35 @@
-/* Display contents of a LEMON formated file */
-/* Balint Joo 2003 */
-/* C. DeTar 10/26/04 reformatted output */
-/* A. Deuzeman 21/04/09 MPI version */
+/*****************************************************************************
+ * LEMON v1.1                                                                *
+ *                                                                           *
+ * This file is part of the LEMON implementation of the SCIDAC LIME format.  *
+ *                                                                           *
+ * It is based directly upon the original c-lime implementation,             *
+ * as maintained by C. deTar for the USQCD Collaboration,                    *
+ * and inherits its license model and parts of its original code.            *
+ *                                                                           *
+ * LEMON is free software: you can redistribute it and/or modify             *
+ * it under the terms of the GNU General Public License as published by      *
+ * the Free Software Foundation, either version 3 of the License, or         *
+ * (at your option) any later version.                                       *
+ *                                                                           *
+ * LEMON is distributed in the hope that it will be useful,                  *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
+ * GNU General Public License for more details. You should have received     *
+ * a copy of the GNU General Public License along with LEMON. If not,        *
+ * see <http://www.gnu.org/licenses/>.                                       *
+ *                                                                           *
+ * LEMON was written for the European Twisted Mass Collaboration.            *
+ * For support requests or bug reports, please contact                       *
+ *    A. Deuzeman (deuzeman@itp.unibe.ch)                                    *
+ *****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <lemon.h>
 #include <mpi.h>
 #define MAX_BYTES 0x1000
+
+#include "../include/lemon.h"
 
 /* Scan for non-ASCII characters */
 /* Return true if all characters are ASCII */

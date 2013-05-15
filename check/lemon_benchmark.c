@@ -1,9 +1,35 @@
+/*****************************************************************************
+ * LEMON v1.1                                                                *
+ *                                                                           *
+ * This file is part of the LEMON implementation of the SCIDAC LIME format.  *
+ *                                                                           *
+ * It is based directly upon the original c-lime implementation,             *
+ * as maintained by C. deTar for the USQCD Collaboration,                    *
+ * and inherits its license model and parts of its original code.            *
+ *                                                                           *
+ * LEMON is free software: you can redistribute it and/or modify             *
+ * it under the terms of the GNU General Public License as published by      *
+ * the Free Software Foundation, either version 3 of the License, or         *
+ * (at your option) any later version.                                       *
+ *                                                                           *
+ * LEMON is distributed in the hope that it will be useful,                  *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
+ * GNU General Public License for more details. You should have received     *
+ * a copy of the GNU General Public License along with LEMON. If not,        *
+ * see <http://www.gnu.org/licenses/>.                                       *
+ *                                                                           *
+ * LEMON was written for the European Twisted Mass Collaboration.            *
+ * For support requests or bug reports, please contact                       *
+ *    A. Deuzeman (deuzeman@itp.unibe.ch)                                    *
+ *****************************************************************************/
+
 #include <math.h>
-#include <lemon.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
+#include "../include/lemon.h"
 #include "md5.h"
 
 char const *humanForm(unsigned long long int filesize);
@@ -48,8 +74,8 @@ int main(int argc, char **argv)
   int mpisize;
   int rank;
   char const *type;
-  int ldsize;
-  unsigned long long int fsize;
+  size_t ldsize;
+  size_t fsize;
   int *hashMatch, *hashMatchAll;
   double const rscale = 1.0 / RAND_MAX;
 
@@ -82,6 +108,11 @@ int main(int argc, char **argv)
     usage(rank, argv);
     MPI_Finalize();
     return 1;
+  }
+  else
+  {
+    if (rank == 0)
+      fprintf(stderr, "Benchmarking Lemon %s\n", lemonVersionString());
   }
   
   L = atoi(argv[1]);
@@ -128,7 +159,7 @@ int main(int argc, char **argv)
     latSizes[i] = locSizes[i] * latDist[i];
   }
   latVol = mpisize * localVol;
-  ldsize = localVol * 72 * sizeof(double);
+  ldsize = (unsigned long long int)localVol * 72 * sizeof(double);
   fsize = (unsigned long long int)latVol * 72 * sizeof(double);
  
   MPI_Cart_create(MPI_COMM_WORLD, 4, latDist, periods, 1, &cartesian);
