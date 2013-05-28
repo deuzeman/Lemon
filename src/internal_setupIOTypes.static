@@ -47,9 +47,9 @@ static void lemonSetupIOTypes(LemonSetup *setup, MPI_Comm cartesian, MPI_Offset 
   /* Calculation of local lattice dimensions from the MPI data we obtained. */
   for (int idx = 0; idx < setup->ndims; ++idx)
   {
-    localDims            = latticeDims[idx] / mpiDims[idx];
+    localDims[idx]       = latticeDims[idx] / mpiDims[idx];
     setup->starts[idx]   = 0;
-    setup->strides[idx]  = (idx == 0) ? 1 : latticeDims[idx] * strides[idx - 1];
+    setup->strides[idx]  = (idx == 0) ? 1 : latticeDims[idx] * setup->strides[idx - 1];
   }
 
   free(mpiDims);
@@ -68,10 +68,10 @@ static void lemonSetupIOTypes(LemonSetup *setup, MPI_Comm cartesian, MPI_Offset 
   int ctr = 0;
   for (int dim = setup->ndims - 1; dim >= 0; --dim)
   {
-    MPI_Type_vector(setup->strides[mapping[dim]], 1, , setup->chain[ctr], &setup->chain[ctr + 1]);
+    MPI_Type_vector(localDims[mapping[dim]], 1, setup->strides[mapping[dim]], setup->chain[ctr], &setup->chain[ctr + 1]);
     MPI_Type_commit(&setup->chain[ctr + 1]);
     ++ctr;
-    MPI_Type_indexed(setup->starts[mapping[dim]], 1, , setup->chain[ctr], &setup->chain[ctr + 1]);
+    MPI_Type_indexed(1, 1, setup->starts[mapping[dim]], setup->chain[ctr], &setup->chain[ctr + 1]);
     MPI_Type_commit(&setup->chain[ctr + 1]);
     ++ctr;
   }
