@@ -28,48 +28,55 @@
 
 static void lemonSetupIOTypes(LemonSetup *setup, MPI_Comm cartesian, MPI_Offset siteSize, int const *latticeDims, int const *mapping)
 {
-  int idx = 0;
-  int *mpiCoords = (int*)NULL;
-  int *mpiDims = (int*)NULL;
-  int *period  = (int*)NULL;
+  /* Gathering of the required MPI data from the cartesian communicator. */
+  MPI_Comm_size(cartesian, &setup->size);
+  MPI_Cartdim_get(cartesian, &setup->ndims);
+  
+  int *mpiCoords = (int*)malloc(setup->ndims * sizeof(int));
+  int *mpiDims   = (int*)malloc(setup->ndims * sizeof(int));
+  int *period    = (int*)malloc(setup->ndims * sizeof(int));
+  MPI_Cart_get(cartesian, setup->ndims, mpiDims, period, mpiCoords);
+  free(period);
+  
+  /* Determining the info of the lattice we are attempting to write out. */
+  setup->starts = (int*)malloc(setup->ndims * sizeof(int));
+  setup->strides = (int*)malloc(setup->ndims * sizeof(int));
 
-  /* Set up data types and file view */
+  int *localDims = (int*)malloc(setup->ndims * sizeof(int));
+  
+  /* Calculation of local lattice dimensions from the MPI data we obtained. */
+  for (int idx = 0; idx < setup->ndims; ++idx)
+  {
+    localDims            = latticeDims[idx] / mpiDims[idx];
+    setup->starts[idx]   = 0;
+    setup->strides[idx]  = (idx == 0) ? 1 : latticeDims[idx] * strides[idx - 1];
+  }
+
+  free(mpiDims);
+  free(mpiCoords);
+  
+  /* Allocate memory for the sequence of datatypes setting up the filetype. */
+  setup->chain = (MPI_Datatype*)malloc(2 * setup->ndims * sizeof(MPI_Datatype));
+
   /* Elementary datatype for reading/writing: a single lattice site of the correct size.
      Note that we always assume we obtained this as raw binary data of the correct type,
      because apparently we cannot trust MPI libraries to deal with conversions internally. */
-  MPI_Type_contiguous(siteSize, MPI_BYTE, &setup->etype);
-  MPI_Type_commit(&setup->etype);
+  MPI_Type_contiguous(siteSize, MPI_BYTE, setup->chain); /* i.e. the first element of chain... */
+  MPI_Type_commit(setup->chain);
 
-  /* Gathering of the required MPI data from the cartesian communicator. */
-  MPI_Cartdim_get(cartesian, &setup->ndims);
-
-  setup->starts = (int*)malloc(setup->ndims * sizeof(int));
-  setup->localDims = (int*)malloc(setup->ndims * sizeof(int));
-  setup->mappedDims = (int*)malloc(setup->ndims * sizeof(int));
-  setup->localVol = 1;
-  setup->totalVol = 1;
-
-  mpiCoords = (int*)malloc(setup->ndims * sizeof(int));
-  mpiDims = (int*)malloc(setup->ndims * sizeof(int));
-  period  = (int*)malloc(setup->ndims * sizeof(int));
-
-  MPI_Cart_get(cartesian, setup->ndims, mpiDims, period, mpiCoords);
-
-  /* Calculation of local lattice dimensions from the MPI data we obtained. */
-  for (idx = 0; idx < setup->ndims; ++idx)
+  /* Create a chain of vector types, recursively peeling of the dimensions */
+  int ctr = 0;
+  for (int dim = setup->ndims - 1; dim >= 0; --dim)
   {
-    setup->mappedDims[idx]  = latticeDims[mapping[idx]];
-    setup->localDims[idx]   = setup->mappedDims[idx] / mpiDims[mapping[idx]];
-    setup->localVol        *= setup->localDims[idx];
-    setup->totalVol        *= setup->mappedDims[idx];
-    setup->starts[idx]      = setup->localDims[idx] * mpiCoords[mapping[idx]];
+    MPI_Type_vector(setup->strides[mapping[dim]], 1, , setup->chain[ctr], &setup->chain[ctr + 1]);
+    MPI_Type_commit(&setup->chain[ctr + 1]);
+    ++ctr;
+    MPI_Type_indexed(setup->starts[mapping[dim]], 1, , setup->chain[ctr], &setup->chain[ctr + 1]);
+    MPI_Type_commit(&setup->chain[ctr + 1]);
+    ++ctr;
   }
-  free(period);
-  free(mpiDims);
-  free(mpiCoords);
-
-  /* Build up a filetype that provides the right offsets for the reading of a N-dimensional lattice. */
-  MPI_Type_create_subarray(setup->ndims, setup->mappedDims, setup->localDims, setup->starts,
-			   MPI_ORDER_C, setup->etype, &setup->ftype);
-  MPI_Type_commit(&setup->ftype);
+  
+  setup->etype = &setup->chain[0];
+  setup->ftype = &setup->chain[ctr];
+  
 }

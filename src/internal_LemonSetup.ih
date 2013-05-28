@@ -30,14 +30,14 @@
 
 typedef struct
 {
-  MPI_Datatype etype;
-  MPI_Datatype ftype;
-
   int ndims;
-  int localVol;
-  int totalVol;
+  int size;
+
+  MPI_Datatype *chain;
+  
+  MPI_Datatype *etype;
+  MPI_Datatype *ftype;
 
   int *starts;
-  int *localDims;
-  int *mappedDims;
+  int *strides;
 } LemonSetup;
