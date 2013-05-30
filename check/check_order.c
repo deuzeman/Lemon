@@ -29,13 +29,13 @@
 
 #include "../include/lemon.h"
 
-typedef int site_t[4];
+typedef char site_t[4];
 
 int main(int argc, char **argv)
 {
   int write = 0;
   int mpi_dims[] = {0, 0, 0, 0};
-  
+
   if (argc == 1)
     write = 1;
 
@@ -46,53 +46,49 @@ int main(int argc, char **argv)
     mpi_dims[2] = atoi(argv[3]);
     mpi_dims[3] = atoi(argv[4]);
   }
-   
+
   int mpi_size;
   int rank;
   int mpi_coords[4];
 
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-  
 
   int periods[] = {1, 1, 1, 1};
-  int const mapping[] = {0, 3, 2, 1};
-  
- 
+  int const mapping[] = {0, 1, 2, 3};
+
   MPI_Comm cartesian;
   MPI_Dims_create(mpi_size, 4, mpi_dims);
 
   MPI_Cart_create(MPI_COMM_WORLD, 4, mpi_dims, periods, 1, &cartesian);
-  
+
   MPI_Comm_rank(cartesian, &rank);
   MPI_Cart_coords(cartesian, rank, 4, mpi_coords);
 
   /* We work on a fixed 32^4 lattice volume. */
-  int lat_dims[] = {32, 32, 32, 32};
-  int lat_vol = 32 * 32 * 32 * 32;
- 
+  int lat_dims[] = {8, 4, 4, 4};
+  int lat_vol = 8 * 4 * 4 * 4;;
   int loc_dims[4];
+
   for (int idx = 0; idx < 4; ++idx)
     loc_dims[idx] = lat_dims[idx] / mpi_dims[idx];
   int loc_vol = lat_vol / mpi_size;
 
-  site_t *data = (site_t*)malloc(sizeof(site_t) * loc_vol);;
+  site_t *data = (site_t*)malloc(sizeof(site_t) * loc_vol);
   int ctr = 0;
   for (int t = loc_dims[0] * mpi_coords[0]; t < loc_dims[0] * mpi_coords[0] + loc_dims[0]; ++t)
     for (int z = loc_dims[1] * mpi_coords[1]; z < loc_dims[1] * mpi_coords[1] + loc_dims[1]; ++z)
       for (int y = loc_dims[2] * mpi_coords[2]; y < loc_dims[2] * mpi_coords[2] + loc_dims[2]; ++y)
         for (int x = loc_dims[3] * mpi_coords[3]; x < loc_dims[3] * mpi_coords[3] + loc_dims[3]; ++x)
         {
-          data[ctr][0] = t;
-          data[ctr][1] = z;
-          data[ctr][2] = y;
-          data[ctr][3] = x;
+          sprintf(data[ctr], "%3d", ((t * lat_dims[1] + z) * lat_dims[2] + y) * lat_dims[3] + x);
+          data[ctr][3] = '\0';
           ++ctr;
         }
 
-  MPI_File fp;  
+  MPI_File fp;
   char const *type;
-  
+
   if (!rank)
   {
     printf("Write = %d\n", write);
@@ -102,7 +98,7 @@ int main(int argc, char **argv)
   {
     LemonWriter *w;
     LemonRecordHeader *h;
-   
+
     int ME_flag=1, MB_flag=1, status=0;
 
     /* Start of code - writing */
@@ -111,11 +107,11 @@ int main(int argc, char **argv)
     MPI_File_set_size(fp, 0);
     w = lemonCreateWriter(&fp, cartesian);
 
-    h = lemonCreateHeader(MB_flag, ME_flag, "parallel-test", lat_vol * sizeof(site_t));
+    h = lemonCreateHeader(MB_flag, ME_flag, "parallel-test", lat_vol * sizeof(short int));
     status = lemonWriteRecordHeader(h, w);
     lemonDestroyHeader(h);
 
-    lemonWriteLatticeParallelMapped(w, data, sizeof(site_t), lat_dims, mapping);
+    lemonWriteLatticeParallelMapped(w, data, sizeof(short int), lat_dims, mapping);
 
     lemonWriterCloseRecord(w);
     lemonDestroyWriter(w);
@@ -137,22 +133,39 @@ int main(int argc, char **argv)
   if (strncmp(type, "parallel-test", 13))
     fprintf(stderr, "Node %d reports: wrong type read.\n", rank);
 
-  lemonReadLatticeParallelMapped(r, data, sizeof(site_t), lat_dims, mapping);
+  lemonReadLatticeParallelMapped(r, data, sizeof(short int), lat_dims, mapping);
 
   int failure = 0;
-  ctr = 0;
-  for (int t = loc_dims[0] * mpi_coords[0]; t < loc_dims[0] * (mpi_coords[0] + 1); ++t)
-    for (int z = loc_dims[1] * mpi_coords[1]; z < loc_dims[1] * (mpi_coords[1] + 1); ++z)
-      for (int y = loc_dims[2] * mpi_coords[2]; y < loc_dims[2] * (mpi_coords[2] + 1); ++y)
-        for (int x = loc_dims[3] * mpi_coords[3]; x < loc_dims[3] * (mpi_coords[3] + 1); ++x)
+  for (int rctr = 0; rctr < mpi_size; ++rctr)
+  {
+    MPI_Barrier(cartesian);
+    if (rctr != rank)
+      continue;
+    ctr = 0;
+    char control[4];
+    printf("Reporting for node %d\n", rank);
+    for (int t = loc_dims[0] * mpi_coords[0]; t < loc_dims[0] * (mpi_coords[0] + 1); ++t)
+    {
+      for (int z = loc_dims[1] * mpi_coords[1]; z < loc_dims[1] * (mpi_coords[1] + 1); ++z)
+      {
+        for (int y = loc_dims[2] * mpi_coords[2]; y < loc_dims[2] * (mpi_coords[2] + 1); ++y)
         {
-          failure += (data[ctr][0] != t);
-          failure += (data[ctr][1] != z);
-          failure += (data[ctr][2] != y);
-          failure += (data[ctr][3] != x);
-          ++ctr;
+          for (int x = loc_dims[3] * mpi_coords[3]; x < loc_dims[3] * (mpi_coords[3] + 1); ++x)
+          {
+            printf("%4s", data[ctr]);
+            sprintf(control, "%3d", ((t * lat_dims[1] + z) * lat_dims[2] + y) * lat_dims[3] + x);
+            control[3] = '\0';
+            failure += strncmp(data[ctr], control, 3);
+            ++ctr;
+          }
+          printf("   ");
         }
-  
+        printf("\n");
+      }
+      printf("\n");
+    }
+  }
+
   if (failure)
     fprintf(stderr, "Node %d reports: %d failures.\n", rank, failure);
   else
@@ -166,5 +179,3 @@ int main(int argc, char **argv)
 
   return(0);
 }
-
-

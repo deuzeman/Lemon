@@ -40,4 +40,7 @@ typedef struct
 
   int *starts;
   int *strides;
+
+  MPI_Offset local_elements;
+  MPI_Offset lattice_volume;
 } LemonSetup;

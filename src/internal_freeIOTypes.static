@@ -29,10 +29,8 @@
 static void lemonFreeIOTypes(LemonSetup *setup)
 {
   /* Free up the resources. */
-  MPI_Type_free(&setup->etype);
-  MPI_Type_free(&setup->ftype);
-  MPI_Type_free(&setup->chain);
+  for (int idx = setup->ndims; idx >= 0; --idx)
+    MPI_Type_free(&setup->chain[idx]);
+  free(setup->chain);
   free(setup->starts);
-  free(setup->localDims);
-  free(setup->mappedDims);
 }
